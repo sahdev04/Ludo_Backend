@@ -4,11 +4,6 @@ import jwt from "jsonwebtoken";
 const User = sequelize.define(
   "User",
   {
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
     mobileNo: {
       type: DataTypes.STRING,
       unique: true,
@@ -21,14 +16,13 @@ const User = sequelize.define(
       type: DataTypes.STRING,
     },
   },
-  { timestamps: true }
+  { timestamps: true, freezeTableName: true }
 );
 
 User.prototype.generateAccessToken = function () {
   return jwt.sign(
     {
-      _id: this._id,
-      username: this.username,
+      id: this.id,
       mobileNo: this.mobileNo,
     },
     process.env.ACCESS_TOKEN_SECRET,
@@ -40,7 +34,7 @@ User.prototype.generateAccessToken = function () {
 User.prototype.generateRefreshToken = function () {
   return jwt.sign(
     {
-      _id: this._id,
+      id: this.id,
     },
     process.env.REFRESH_TOKEN_SECRET,
     {
@@ -48,4 +42,5 @@ User.prototype.generateRefreshToken = function () {
     }
   );
 };
+
 export { User };

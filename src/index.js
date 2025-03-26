@@ -10,10 +10,14 @@ const PORT = 7000;
 sequelize
   .authenticate()
   .then(() => {
+    console.log("Database connected successfully!");
+    return sequelize.sync();
+  })
+  .then(() => {
     app.listen(PORT, () => {
-      console.log("your server connected on port ", PORT);
+      console.log("Server is running on port", PORT);
     });
   })
   .catch((err) => {
-    console.log(err);
+    console.error("Database connection error:", err);
   });
