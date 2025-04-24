@@ -1,7 +1,7 @@
 import { Sequelize } from "sequelize";
 
 // Initialize Sequelize connection
-const sequelize = new Sequelize("ludouser", "postgres", "root", {
+const sequelize = new Sequelize("ludogame", "postgres", "root", {
   host: "localhost",
   dialect: "postgres",
 });
@@ -10,7 +10,7 @@ const sequelize = new Sequelize("ludouser", "postgres", "root", {
 const testDbConnection = async () => {
   try {
     await sequelize.authenticate();
-    console.log("✅ Database connection successful!");
+    console.log("Database connection successful!");
   } catch (error) {
     console.error(" Database connection failed:", error.message);
   }
