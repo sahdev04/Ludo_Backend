@@ -11,7 +11,7 @@ const Transaction = sequelize.define("Transaction", {
   userId: { type: DataTypes.UUID, references: { model: User, key: "id" } },
   amount: { type: DataTypes.FLOAT, allowNull: false },
   type: {
-    type: DataTypes.ENUM("deposit", "withdrawal", "win", "entry_fee"),
+    type: DataTypes.ENUM("deposit", "withdrawal", "win", "entry_fee", "bonus"),
     allowNull: false,
   },
   status: {

@@ -9,6 +9,7 @@ import {
   submitUserName,
   uploadAvatar,
 } from "../controller/authController.js";
+import { upload } from "../middleware/multer.middleware.js";
 import authenticateUser from "../middleware/authmiddleware.js";
 
 const router = express.Router();
@@ -26,4 +27,5 @@ router.post(
   upload.single("avatar"),
   uploadAvatar
 );
+
 export default router;

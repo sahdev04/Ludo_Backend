@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../model/userModel.js";
-import uploadOnCloudinary from "../../src/util/cloudinary.js";
+import { uploadOnCloudinary } from "../../src/util/cloudinary.js";
 //import { generateAndSaveOtp } from "../util/genrateAndsend.js";
 // Temporary token blacklist storage (use Redis in production)
 let tokenBlacklist = new Set();
@@ -290,49 +290,36 @@ const submitUserName = async (req, res) => {
     });
   }
 };
+// controllers/userController.js
 const uploadAvatar = async (req, res) => {
   try {
-    // Check if file exists
-    const avatarPath = req.files?.avatar?.path;
+    const avatarPath = req.file?.path;
+
     if (!avatarPath) {
-      return res.status(400).json({ message: "Avatar file is missing" });
+      return res.status(400).json({ message: "No image provided" });
     }
 
-    // Upload the image to Cloudinary
-    const avatar = await uploadOnCloudinary(avatarPath);
-
-    // Check if Cloudinary returned a valid URL
-    if (!avatar?.url) {
-      return res
-        .status(400)
-        .json({ message: "Error while uploading on Cloudinary" });
+    const uploadedImage = await uploadOnCloudinary(avatarPath);
+    if (!uploadedImage?.secure_url) {
+      return res.status(500).json({ message: "Cloudinary upload failed" });
     }
 
-    // Update user avatar in the database
     const [updated] = await User.update(
-      { avatar: avatar.url }, // Set new avatar URL
-      { where: { id: req.user.id }, returning: true, plain: true } // Use `id` from authenticated user
+      { avatar: uploadedImage.secure_url },
+      { where: { id: req.user.id } }
     );
 
-    // Check if user was updated successfully
     if (!updated) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Return success message
-    return res.status(200).json({
-      message: "Avatar updated successfully",
-      avatarUrl: avatar.url,
-    });
+    return res.status(200).json({ avatarUrl: uploadedImage.secure_url });
   } catch (error) {
-    console.error("Avatar upload error:", error);
-
-    // Send the structured error message
-    return res.status(error.statusCode || 500).json({
-      message: error.message || "Something went wrong while uploading avatar",
-    });
+    console.error("Upload error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 export {
   register,
   login,

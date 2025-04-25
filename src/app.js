@@ -46,7 +46,7 @@ app.use("/room", roomRouter);
 //tournament router
 app.use("/tournament", tournamentRouter);
 //transaction router
-app.use("/wallet", walletRouter);
+app.use("/user", walletRouter);
 // Global error handling middleware
 app.use((err, req, res, next) => {
   console.error("Server Error:", err);
