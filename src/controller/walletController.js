@@ -1,29 +1,46 @@
-//import{ v4: uuidv4 } from "uuid";
 import { Op } from "sequelize";
 import { sequelize } from "../config/database.js";
 import { User } from "../model/userModel.js";
 import { Transaction } from "../model/transactionModel.js";
 import crypto from "crypto";
-import razorpay from "../util/razorpay.js";
+import Razorpay from "razorpay";
+import dotenv from "dotenv";
+dotenv.config();
+
+const instance = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
 
 // Deposit funds into wallet
 const depositFunds = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { amount } = req.body;
+    const { amount, razorpayPaymentId } = req.body;
     const userId = req.user.id;
 
+    // Validate amount
     const depositAmount = parseFloat(amount);
     if (isNaN(depositAmount) || depositAmount <= 0) {
+      await t.rollback();
       return res.status(400).json({ message: "Invalid deposit amount" });
     }
 
+    // Verify Razorpay payment
+    const payment = await instance.payments.fetch(razorpayPaymentId);
+    if (payment.status !== "captured") {
+      await t.rollback();
+      return res.status(400).json({ message: "Payment not captured" });
+    }
+
+    // Find user
     const user = await User.findByPk(userId, { transaction: t });
     if (!user) {
       await t.rollback();
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Create transaction record
     const transaction = await Transaction.create(
       {
         userId,
@@ -34,24 +51,28 @@ const depositFunds = async (req, res) => {
       { transaction: t }
     );
 
+    // Update transaction status to completed
     await transaction.update({ status: "completed" }, { transaction: t });
 
+    // Update user's wallet balance
     await user.update(
       {
-        wallet_balance: parseFloat(
-          (user.wallet_balance + depositAmount).toFixed(2)
+        walletBalance: parseFloat(
+          (user.walletBalance + depositAmount).toFixed(2)
         ),
       },
       { transaction: t }
     );
 
     await t.commit();
+
     res.json({
       message: "Deposit successful",
-      wallet_balance: user.wallet_balance,
+      walletBalance: user.walletBalance,
     });
   } catch (error) {
     await t.rollback();
+    console.error("Deposit Funds Error:", error);
     res
       .status(500)
       .json({ message: "Error depositing funds", error: error.message });
@@ -61,11 +82,13 @@ const depositFunds = async (req, res) => {
 // Withdraw funds from wallet
 const withdrawFunds = async (req, res) => {
   try {
-    const { amount } = req.body;
+    const { amount, mobile } = req.body;
     const userId = req.user.id;
 
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ message: "Invalid withdrawal amount" });
+    if (!amount || amount <= 0 || !mobile) {
+      return res
+        .status(400)
+        .json({ message: "Amount or phone number missing" });
     }
 
     const user = await User.findByPk(userId);
@@ -77,28 +100,33 @@ const withdrawFunds = async (req, res) => {
       return res.status(400).json({ message: "Insufficient balance" });
     }
 
-    // Create withdrawal transaction with pending status
-    const transaction = await Transaction.create({
-      userId,
-      amount: -amount, // Negative amount for withdrawal
-      type: "withdrawal",
-      status: "pending",
-    });
-
-    // Simulate successful withdrawal (update status in real case after admin approval)
-    await transaction.update({ status: "completed" });
-
-    // Deduct from wallet balance
+    // Deduct wallet immediately (you can delay this if needed)
     await user.update({ walletBalance: user.walletBalance - amount });
 
-    res.json({
-      message: "Withdrawal successful",
+    // Create transaction
+    const transaction = await Transaction.create({
+      userId,
+      amount: -amount,
+      type: "withdrawal",
+      mobile,
+      status: "pending", // admin may later approve this
+    });
+
+    // Simulate payout via Razorpay (you would replace this with the actual payout API)
+    setTimeout(async () => {
+      await transaction.update({ status: "completed" });
+    }, 2000);
+
+    return res.json({
+      message: "Withdrawal requested successfully",
       walletBalance: user.walletBalance,
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error processing withdrawal", error: error.message });
+    console.error(error);
+    return res.status(500).json({
+      message: "Error processing withdrawal",
+      error: error.message,
+    });
   }
 };
 
@@ -194,7 +222,6 @@ const deductEntryFee = async (req, res) => {
   try {
     const { amount } = req.body;
     const userId = req.user.id; // Assumes auth middleware sets this
-    console.log(amount);
     const entryFee = parseFloat(amount);
     if (isNaN(entryFee) || entryFee <= 0) {
       return res.status(400).json({ message: "Invalid entry fee amount" });
@@ -252,7 +279,7 @@ const createRazorpayOrder = async (req, res) => {
       receipt: `wallet_deposit_${userId}_${Date.now()}`,
     };
 
-    const order = await razorpay.orders.create(options);
+    const order = await instance.orders.create(options);
 
     res.json({
       success: true,
@@ -328,33 +355,17 @@ const verifyRazorpayPayment = async (req, res) => {
   }
 };
 
+// Fetch Transaction History
 const getTransactionHistory = async (req, res) => {
   try {
     const userId = req.user.id;
-    console.log("tran id", userId);
     const transactions = await Transaction.findAll({
       where: { userId },
       order: [["createdAt", "DESC"]],
-      attributes: [
-        "id",
-        "amount",
-        "type",
-        "status",
-        "referenceId",
-        "createdAt",
-      ],
+      attributes: ["type", "amount", "status", "createdAt"],
     });
-    const formattedTransactions = transactions.map((tx) => ({
-      id: tx.id,
-      amount: parseFloat(tx.amount),
-      type: tx.type,
-      status: tx.status,
-      referenceId: tx.referenceId || null,
-      date: tx.createdAt,
-    }));
 
-    console.log("transaction", formattedTransactions);
-    res.json({ transactions: formattedTransactions });
+    res.json({ transactions });
   } catch (error) {
     res.status(500).json({
       message: "Error fetching transaction history",
@@ -396,10 +407,10 @@ export {
   depositFunds,
   withdrawFunds,
   getWalletBalance,
-  getTransactionHistory,
   addWinnings,
   deductEntryFee,
-  verifyRazorpayPayment,
   createRazorpayOrder,
+  verifyRazorpayPayment,
+  getTransactionHistory,
   getWithdrawHistory,
 };
