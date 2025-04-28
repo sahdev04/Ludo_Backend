@@ -356,6 +356,7 @@ const verifyRazorpayPayment = async (req, res) => {
 };
 
 // Fetch Transaction History
+// Fetch Transaction History
 const getTransactionHistory = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -367,6 +368,7 @@ const getTransactionHistory = async (req, res) => {
 
     res.json({ transactions });
   } catch (error) {
+    console.error("Error fetching transaction history:", error);
     res.status(500).json({
       message: "Error fetching transaction history",
       error: error.message,
@@ -401,6 +403,38 @@ const getWithdrawHistory = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+// User apni withdrawal request create karega
+const createWithdrawalRequest = async (req, res) => {
+  const { amount } = req.body;
+  const userId = req.user.id; // JWT ya session se user nikaloge
+
+  if (amount <= 0) {
+    return res.status(400).json({ message: "Amount must be greater than 0" });
+  }
+
+  await WithdrawalRequest.create({
+    userId,
+    amount,
+    status: "pending",
+  });
+
+  return res
+    .status(201)
+    .json({ message: "Withdrawal request created successfully" });
+};
+
+// User apne withdrawal requests dekh sakta hai
+const getUserWithdrawalRequests = async (req, res) => {
+  const userId = req.user.id;
+
+  const withdrawals = await WithdrawalRequest.findAll({
+    where: { userId },
+    order: [["createdAt", "DESC"]],
+  });
+
+  return res.json({ withdrawals });
 };
 
 export {
