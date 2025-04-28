@@ -1,4 +1,4 @@
-import { WithdrawalRequest } from "../model/withdrawalRequestModel.js";
+import { WithdrawalRequest } from "../model/withdrawRequest.js";
 import { User } from "../model/userModel.js";
 import { Transaction } from "../model/transactionModel.js";
 import { Op } from "sequelize";

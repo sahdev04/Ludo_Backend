@@ -10,6 +10,8 @@ import roomRouter from "./route/roomRoutes.js";
 import gameRouter from "./route/gameRoutes.js";
 import tournamentRouter from "./route/tournamentRoutes.js";
 import walletRouter from "./route/walletRoutes.js";
+import paymentRouter from "./route/payment.route.js";
+import adminRouter from "./route/admin.route.js";
 dotenv.config({
   path: "./.env",
 });
@@ -45,6 +47,8 @@ app.use("/game", gameRouter);
 app.use("/room", roomRouter);
 //tournament router
 app.use("/tournament", tournamentRouter);
+
+app.use("/payment", paymentRouter);
 //transaction router
 app.use("/user", walletRouter);
 // Global error handling middleware
