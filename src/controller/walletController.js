@@ -5,6 +5,7 @@ import { Transaction } from "../model/transactionModel.js";
 import crypto from "crypto";
 import Razorpay from "razorpay";
 import dotenv from "dotenv";
+
 dotenv.config();
 
 const instance = new Razorpay({
@@ -12,73 +13,8 @@ const instance = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// Deposit funds into wallet
-const depositFunds = async (req, res) => {
-  const t = await sequelize.transaction();
-  try {
-    const { amount, razorpayPaymentId } = req.body;
-    const userId = req.user.id;
-
-    // Validate amount
-    const depositAmount = parseFloat(amount);
-    if (isNaN(depositAmount) || depositAmount <= 0) {
-      await t.rollback();
-      return res.status(400).json({ message: "Invalid deposit amount" });
-    }
-
-    // Verify Razorpay payment
-    const payment = await instance.payments.fetch(razorpayPaymentId);
-    if (payment.status !== "captured") {
-      await t.rollback();
-      return res.status(400).json({ message: "Payment not captured" });
-    }
-
-    // Find user
-    const user = await User.findByPk(userId, { transaction: t });
-    if (!user) {
-      await t.rollback();
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Create transaction record
-    const transaction = await Transaction.create(
-      {
-        userId,
-        amount: depositAmount,
-        type: "deposit",
-        status: "pending",
-      },
-      { transaction: t }
-    );
-
-    // Update transaction status to completed
-    await transaction.update({ status: "completed" }, { transaction: t });
-
-    // Update user's wallet balance
-    await user.update(
-      {
-        walletBalance: parseFloat(
-          (user.walletBalance + depositAmount).toFixed(2)
-        ),
-      },
-      { transaction: t }
-    );
-
-    await t.commit();
-
-    res.json({
-      message: "Deposit successful",
-      walletBalance: user.walletBalance,
-    });
-  } catch (error) {
-    await t.rollback();
-    console.error("Deposit Funds Error:", error);
-    res
-      .status(500)
-      .json({ message: "Error depositing funds", error: error.message });
-  }
-};
-
+console.log("id ::::::", process.env.RAZORPAY_KEY_ID);
+console.log("secret:::::::::", process.env.RAZORPAY_KEY_SECRET);
 // Withdraw funds from wallet
 const withdrawFunds = async (req, res) => {
   try {
@@ -262,40 +198,121 @@ const deductEntryFee = async (req, res) => {
   }
 };
 
-// Step 1: Initiate a Razorpay Order for wallet deposit
-const createRazorpayOrder = async (req, res) => {
+// Deposit funds into wallet
+const depositFunds = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
-    const { amount } = req.body;
+    const { amount, razorpayPaymentId } = req.body;
     const userId = req.user.id;
 
+    // Validate amount
     const depositAmount = parseFloat(amount);
     if (isNaN(depositAmount) || depositAmount <= 0) {
+      await t.rollback();
       return res.status(400).json({ message: "Invalid deposit amount" });
     }
 
+    // Verify Razorpay payment
+    const payment = await instance.payments.fetch(razorpayPaymentId);
+    if (payment.status !== "captured") {
+      await t.rollback();
+      return res.status(400).json({ message: "Payment not captured" });
+    }
+
+    // Find user
+    const user = await User.findByPk(userId, { transaction: t });
+    if (!user) {
+      await t.rollback();
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Create transaction record
+    const transaction = await Transaction.create(
+      {
+        userId,
+        amount: depositAmount,
+        type: "deposit",
+        status: "pending",
+      },
+      { transaction: t }
+    );
+
+    // Update transaction status to completed
+    await transaction.update({ status: "completed" }, { transaction: t });
+
+    // Update user's wallet balance
+    await user.update(
+      {
+        walletBalance: parseFloat(
+          (user.walletBalance + depositAmount).toFixed(2)
+        ),
+      },
+      { transaction: t }
+    );
+
+    await t.commit();
+
+    res.json({
+      message: "Deposit successful",
+      walletBalance: user.walletBalance,
+    });
+  } catch (error) {
+    await t.rollback();
+    console.error("Deposit Funds Error:", error);
+    res
+      .status(500)
+      .json({ message: "Error depositing funds", error: error.message });
+  }
+};
+
+/// Step 1: Create Razorpay Order
+const createRazorpayOrder = async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const userId = req.user?.id;
+    console.log(" and amount", amount);
+    console.log("userid : ", userId);
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized user" });
+    }
+
+    const depositAmount = parseFloat(amount);
+    if (!amount || isNaN(depositAmount) || depositAmount <= 0) {
+      return res.status(400).json({ message: "Invalid deposit amount" });
+    }
+
+    // ✅ Slice userId to avoid long receipt string (max 40 chars allowed)
+    const receipt = `rcpt_${Date.now()}`; // total ~26-30 chars
+
     const options = {
-      amount: Math.round(depositAmount * 100), // in paise
+      amount: Math.round(depositAmount * 100), // Razorpay needs amount in paise
       currency: "INR",
-      receipt: `wallet_deposit_${userId}_${Date.now()}`,
+      receipt,
+      payment_capture: 1,
     };
 
     const order = await instance.orders.create(options);
-
-    res.json({
+    console.log("options", options);
+    console.log("RAZORPAY_KEY_ID", process.env.RAZORPAY_KEY_ID);
+    console.log("Razorpay response", order);
+    console.log("your order id is given like ", order.id);
+    return res.status(200).json({
       success: true,
       orderId: order.id,
       amount: depositAmount,
       currency: order.currency,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("❌ Error creating Razorpay order:", error);
+    return res.status(500).json({
       message: "Failed to create Razorpay order",
-      error: error.message,
+      error:
+        error?.error?.description || error.message || "Internal Server Error",
     });
   }
 };
 
-// Step 2: Verify Razorpay payment and update wallet
+// Step 2: Verify Razorpay Payment and Update Wallet
 const verifyRazorpayPayment = async (req, res) => {
   const t = await sequelize.transaction();
   try {
@@ -305,18 +322,25 @@ const verifyRazorpayPayment = async (req, res) => {
       razorpay_signature,
       amount,
     } = req.body;
-    const userId = req.user.id;
 
-    // Step 1: Verify Signature
-    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
-    hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
-    const generatedSignature = hmac.digest("hex");
+    const userId = req.user?.id;
+    if (!userId) {
+      await t.rollback();
+      return res.status(401).json({ message: "Unauthorized user" });
+    }
+
+    // Step 1: Validate Signature
+    const generatedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest("hex");
 
     if (generatedSignature !== razorpay_signature) {
+      await t.rollback();
       return res.status(400).json({ message: "Invalid payment signature" });
     }
 
-    // Step 2: Credit user wallet
+    // Step 2: Update Wallet
     const user = await User.findByPk(userId, { transaction: t });
     if (!user) {
       await t.rollback();
@@ -324,12 +348,18 @@ const verifyRazorpayPayment = async (req, res) => {
     }
 
     const depositAmount = parseFloat(amount);
+    if (isNaN(depositAmount) || depositAmount <= 0) {
+      await t.rollback();
+      return res.status(400).json({ message: "Invalid amount" });
+    }
+
     const newBalance = parseFloat(
       (user.walletBalance + depositAmount).toFixed(2)
     );
 
     await user.update({ walletBalance: newBalance }, { transaction: t });
 
+    // ✅ Create a transaction record
     await Transaction.create(
       {
         userId,
@@ -342,19 +372,45 @@ const verifyRazorpayPayment = async (req, res) => {
     );
 
     await t.commit();
-    res.json({
+
+    return res.status(200).json({
       message: "Deposit successful",
       walletBalance: newBalance,
     });
   } catch (error) {
     await t.rollback();
-    res.status(500).json({
+    console.error("❌ Error verifying Razorpay payment:", error);
+    return res.status(500).json({
       message: "Error verifying payment",
-      error: error.message,
+      error: error.message || "Internal Server Error",
     });
   }
 };
 
+const createPaymentLink = async (req, res) => {
+  const { amount, userId } = req.body;
+  //http://localhost:8000/user/verify-payment
+  const options = {
+    amount: amount * 100,
+    currency: "INR",
+    description: "Wallet Top-Up",
+    customer: {
+      name: "User Name",
+      email: "test@example.com",
+      contact: "9876543210",
+    },
+    notify: {
+      sms: true,
+      email: true,
+    },
+    reminder_enable: true,
+    callback_url: "http://localhost:8000/verify-payment",
+    callback_method: "get",
+  };
+
+  const response = await razorpay.paymentLink.create(options);
+  res.json({ payment_url: response.short_url });
+};
 // Fetch Transaction History
 // Fetch Transaction History
 const getTransactionHistory = async (req, res) => {
