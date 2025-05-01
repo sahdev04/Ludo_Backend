@@ -13,16 +13,26 @@ import {
 // Create a new tournament
 const createTournament = async (req, res) => {
   try {
-    const { name, entryFee, prizePool } = req.body;
-    console.log(name);
-    // Validate input
-    if (!name || typeof name !== "string") {
+    const {
+      title,
+      entryFee,
+      prizePool,
+      maxPlayers,
+      startDate,
+      endDate,
+      level,
+    } = req.body;
+
+    // Validate name
+    if (!title || typeof title !== "string") {
       return res.status(400).json({ message: "Invalid tournament name" });
     }
 
     const entryFeeNumber = Number(entryFee);
     const prizePoolNumber = Number(prizePool);
-
+    const maxPlayersNumber = Number(maxPlayers);
+    const levelNumber = Number(level);
+    // Validate numbers
     if (isNaN(entryFeeNumber) || entryFeeNumber < 0) {
       return res.status(400).json({ message: "Invalid entry fee" });
     }
@@ -31,21 +41,46 @@ const createTournament = async (req, res) => {
       return res.status(400).json({ message: "Invalid prize pool" });
     }
 
-    // Create tournament
+    if (maxPlayers && (isNaN(maxPlayersNumber) || maxPlayersNumber <= 0)) {
+      return res.status(400).json({ message: "Invalid max players value" });
+    }
+    if (level && (isNaN(levelNumber) || levelNumber <= 0)) {
+      return res.status(400).json({ message: "Invalid level value" });
+    }
+
+    // Validate dates
+    const parsedStartDate = startDate ? new Date(startDate) : null;
+    const parsedEndDate = endDate ? new Date(endDate) : null;
+
+    if (startDate && isNaN(parsedStartDate.getTime())) {
+      return res.status(400).json({ message: "Invalid start date" });
+    }
+
+    if (endDate && isNaN(parsedEndDate.getTime())) {
+      return res.status(400).json({ message: "Invalid end date" });
+    }
+
+    // Create the tournament
     const tournament = await Tournament.create({
-      name,
+      title,
       entryFee: entryFeeNumber,
       prizePool: prizePoolNumber,
+      maxPlayers: maxPlayersNumber || null,
+      startDate: parsedStartDate,
+      endDate: parsedEndDate,
+      level: levelNumber || null,
     });
 
-    res
-      .status(201)
-      .json({ message: "Tournament created successfully", tournament });
+    res.status(201).json({
+      message: "Tournament created successfully",
+      tournament,
+    });
   } catch (error) {
     console.error("Tournament creation error:", error);
-    res
-      .status(500)
-      .json({ message: "Error creating tournament", error: error.message });
+    res.status(500).json({
+      message: "Error creating tournament",
+      error: error.message,
+    });
   }
 };
 
@@ -153,7 +188,6 @@ const getTournamentDetails = async (req, res) => {
     });
   }
 };
-
 // End a tournament and distribute prizes
 const endTournament = async (req, res) => {
   try {

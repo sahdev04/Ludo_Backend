@@ -157,6 +157,7 @@ const addWinnings = async (req, res) => {
 const deductEntryFee = async (req, res) => {
   try {
     const { amount } = req.body;
+    console.log("my entry fee amount *********************", amount);
     const userId = req.user.id; // Assumes auth middleware sets this
     const entryFee = parseFloat(amount);
     if (isNaN(entryFee) || entryFee <= 0) {
@@ -446,13 +447,14 @@ const getWithdrawHistory = async (req, res) => {
       attributes: ["id", "amount", "status", "createdAt"],
     });
 
-    const formattedWithdrawals = withdrawals.map((tx) => ({
+    /*const formattedWithdrawals = withdrawals.map((tx) => ({
       id: tx.id,
       amount: parseFloat(Math.abs(tx.amount)), // withdrawal amounts are stored as negative
       status: tx.status,
       date: tx.createdAt,
     }));
-    res.json({ withdrawals: formattedWithdrawals });
+    res.json({ withdrawals: formattedWithdrawals });*/
+    res.json({ withdrawals });
   } catch (error) {
     res.status(500).json({
       message: "Error fetching withdraw history",
