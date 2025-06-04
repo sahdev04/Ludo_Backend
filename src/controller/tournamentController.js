@@ -9,7 +9,6 @@ import {
   Tournament,
   Transaction,
 } from "../model/indexModel.js";
-
 // Create a new tournament
 const createTournament = async (req, res) => {
   try {
@@ -83,7 +82,6 @@ const createTournament = async (req, res) => {
     });
   }
 };
-
 // Join a tournament
 const joinTournament = async (req, res) => {
   try {

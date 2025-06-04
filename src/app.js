@@ -16,9 +16,21 @@ dotenv.config({
   path: "./.env",
 });
 const app = express();
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:8081",
+  "exp://127.0.0.1:19000",
+];
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
