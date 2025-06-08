@@ -15,7 +15,7 @@ const io = initializeSocket(server);
     await sequelize.authenticate();
     // console.log("Database connected successfully!");
 
-    await sequelize.sync();
+    await sequelize.sync({ alter: true });
     //console.log("Database synced!");
 
     // Start server only after DB is ready
