@@ -50,7 +50,7 @@ app.use(
     cookie: { secure: false },
   })
 );
-sequelize.authenticate();
+//sequelize.authenticate();
 //user touter
 app.use("/user", userRouter);
 //game router

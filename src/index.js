@@ -5,7 +5,7 @@ import http from "http";
 import { initializeSocket } from "./config/socket.js";
 
 dotenv.config({ path: "./.env" });
-
+const PORT = process.env.PORT || 8000;
 const server = http.createServer(app);
 // Attach WebSocket to server
 const io = initializeSocket(server);
@@ -19,8 +19,8 @@ const io = initializeSocket(server);
     //console.log("Database synced!");
 
     // Start server only after DB is ready
-    server.listen(process.env.PORT, () => {
-      console.log(` Server running on port ${process.env.PORT}`);
+    server.listen(PORT, () => {
+      console.log(` Server running on port ${PORT}`);
     });
   } catch (err) {
     console.error("Database connection error:", err);
