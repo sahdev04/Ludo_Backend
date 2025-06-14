@@ -1,6 +1,7 @@
 import express from "express";
 import {
   register,
+  submitKYC,
   login,
   logout,
   getProfile,

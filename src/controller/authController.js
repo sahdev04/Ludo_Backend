@@ -84,19 +84,38 @@ const getProfile = async (req, res) => {
 // REGISTER/LOGIN
 const register = async (req, res) => {
   try {
-    const { mobile } = req.body;
-    console.log("my mobile numer", mobile);
-    if (!mobile || mobile.length !== 10) {
+    const { mobile, username, referredBy } = req.body;
+    console.log("my mobile numer", mobile, username);
+    if (!mobile || mobile.length !== 10 || !username) {
       return res.status(400).json({ message: "Enter a valid phone number" });
     }
 
-    let user = await User.findOne({ where: { mobile } });
-
+    let user = await User.findOne({ where: { mobile, username } });
+    // generate referral code
+    const referralCode = `${username.toUpperCase()}${Math.floor(
+      100 + Math.random() * 900
+    )}`;
     if (!user) {
       // Create new user if not exists
-      user = await User.create({ mobile });
+      user = await User.create({
+        mobile,
+        username,
+        referralCode,
+        referredBy: referredBy || null,
+      });
     }
-
+    // update referral bonus and count if referredBy exists
+    if (referredBy) {
+      const referrer = await User.findOne({
+        where: { referralCode: referredBy },
+      });
+      if (referrer) {
+        referrer.totalReferrals += 1;
+        referrer.referralBonus += 50; // assume ₹50 bonus
+        referrer.walletBalance += 50;
+        await referrer.save();
+      }
+    }
     // Generate OTP and save to user
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     user.otp = otp;
@@ -108,10 +127,30 @@ const register = async (req, res) => {
       otp, // ✅ Only for development; remove in production
       userId: user.id,
       mobile: user.mobile,
+      username: user.username,
     });
   } catch (error) {
     console.error("Registration/Login error:", error.message);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// KYC submission logic
+const submitKYC = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.kycStatus = "Submitted";
+    user.accountStatus = "Verified";
+    await user.save();
+
+    res.status(200).json({ message: "KYC submitted", user });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "KYC submission failed", error: err.message });
   }
 };
 // Add the missing generateAndSaveOtp function
@@ -322,6 +361,7 @@ const uploadAvatar = async (req, res) => {
 
 export {
   register,
+  submitKYC,
   login,
   logout,
   getProfile,

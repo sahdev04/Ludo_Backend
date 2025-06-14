@@ -11,7 +11,8 @@ import {
   getWithdrawHistory,
 } from "../controller/walletController.js";
 import authenticateUser from "../middleware/authmiddleware.js";
-import authorizeAdmin from "../middleware/isAdmin.js";
+import authorizeRoles from "../middleware/authorizeRole.js";
+import authenticateAdmin from "../middleware/authenticateAdmin.js";
 const router = express.Router();
 
 router.post("/deposit", authenticateUser, depositFunds);
@@ -22,5 +23,10 @@ router.post("/add-winnings", authenticateUser, addWinnings);
 router.post("/deduct-entry-fee", authenticateUser, deductEntryFee);
 router.post("/create-order", authenticateUser, createRazorpayOrder);
 router.post("/verify-payment", authenticateUser, verifyRazorpayPayment);
-router.get("/withdrawals", authenticateUser, getWithdrawHistory);
+router.get(
+  "/withdrawals",
+  authenticateAdmin,
+  authorizeRoles("superadmin", "subadmin"),
+  getWithdrawHistory
+);
 export default router;

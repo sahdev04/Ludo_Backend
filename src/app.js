@@ -10,6 +10,8 @@ import roomRouter from "./route/roomRoutes.js";
 import gameRouter from "./route/gameRoutes.js";
 import tournamentRouter from "./route/tournamentRoutes.js";
 import walletRouter from "./route/walletRoutes.js";
+import notificationRouter from "./route/notification.route.js";
+import referSettingRouter from "./route/referSetting.route.js";
 //import paymentRouter from "./route/payment.route.js";
 import adminRouter from "./route/admin.route.js";
 dotenv.config({
@@ -53,17 +55,21 @@ app.use(
 //sequelize.authenticate();
 //user touter
 app.use("/user", userRouter);
+//notification router
+app.use("/notification", notificationRouter);
 //game router
 app.use("/game", gameRouter);
 //room router
 app.use("/room", roomRouter);
 //tournament router
 app.use("/tournament", tournamentRouter);
-
+//refer router
+app.use("/refer", referSettingRouter);
 //app.use("/payment", paymentRouter);
 //transaction router
-app.use("/user", walletRouter);
+app.use("/wallet", walletRouter);
 // Global error handling middleware
+app.use("/admin", adminRouter);
 app.use((err, req, res, next) => {
   console.error("Server Error:", err);
   res.status(500).json({ message: "Server error", error: err.message });

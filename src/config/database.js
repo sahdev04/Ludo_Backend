@@ -1,4 +1,4 @@
-/*import { Sequelize } from "sequelize";
+import { Sequelize } from "sequelize";
 import dotenv from "dotenv";
 
 dotenv.config({ path: "./.env" });
@@ -28,7 +28,8 @@ const testDbConnection = async () => {
 // Call the function immediately
 testDbConnection();
 
-export { sequelize };*/
+export { sequelize };
+/*
 import { Sequelize } from "sequelize";
 import dotenv from "dotenv";
 
@@ -56,4 +57,4 @@ const testDbConnection = async () => {
 
 testDbConnection();
 
-export { sequelize };
+export { sequelize };*/

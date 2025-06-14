@@ -8,8 +8,7 @@ import { Player } from "./playerModel.js";
 import { Piece } from "./pieceModel.js";
 import { Tournament } from "./tournamentModel.js";
 import { Transaction } from "./transactionModel.js";
-
-// 🧩 Define Associations
+import { Notification } from "./notification.js";
 
 // Tournament ↔ Players
 Tournament.hasMany(Player, { foreignKey: "tournamentId", onDelete: "CASCADE" });
@@ -42,6 +41,9 @@ Player.belongsTo(Game, { foreignKey: "gameId" });
 // Player ↔ Pieces
 Player.hasMany(Piece, { foreignKey: "playerId", onDelete: "CASCADE" });
 Piece.belongsTo(Player, { foreignKey: "playerId" });
+
+User.hasMany(Notification, { foreignKey: "userId" });
+Notification.belongsTo(User, { foreignKey: "userId" });
 
 // Sync Database (optional during dev)
 sequelize

@@ -3,6 +3,7 @@ import { sequelize } from "./config/database.js";
 import { app } from "./app.js";
 import http from "http";
 import { initializeSocket } from "./config/socket.js";
+import "./cron/statusUpdate.js";
 
 dotenv.config({ path: "./.env" });
 const PORT = process.env.PORT || 8000;
