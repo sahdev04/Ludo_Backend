@@ -4,7 +4,7 @@ import { Room } from "../model/roomModel.js";
 import { Player } from "../model/playerModel.js";
 import { Piece } from "../model/pieceModel.js";
 //import { v4:uuidv4 } from "uuid";
-import { io } from "../index.js";
+import { io } from "../app.js";
 // Create a new game
 const createGame = async (req, res) => {
   try {

@@ -1,32 +1,78 @@
-import dotenv from "dotenv";
 import { sequelize } from "./config/database.js";
-import { app } from "./app.js";
-import http from "http";
-import { initializeSocket } from "./config/socket.js";
-import "./cron/statusUpdate.js";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import dotenv from "dotenv";
+import express from "express";
+import bodyParser from "body-parser";
+import session from "express-session";
+import userRouter from "./route/authRoutes.js";
+import roomRouter from "./route/roomRoutes.js";
+import gameRouter from "./route/gameRoutes.js";
+import tournamentRouter from "./route/tournamentRoutes.js";
+import walletRouter from "./route/walletRoutes.js";
+import notificationRouter from "./route/notification.route.js";
+import referSettingRouter from "./route/referSetting.route.js";
+//import paymentRouter from "./route/payment.route.js";
+import adminRouter from "./route/admin.route.js";
+dotenv.config({
+  path: "./.env",
+});
+const app = express();
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:8081",
+  "exp://127.0.0.1:19000",
+];
 
-dotenv.config({ path: "./.env" });
-const PORT = process.env.PORT || 8000;
-const server = http.createServer(app);
-// Attach WebSocket to server
-const io = initializeSocket(server);
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+app.use(express.json());
+app.use(bodyParser.json());
+app.use(express.json({ limit: "16kb" }));
 
-(async () => {
-  try {
-    await sequelize.authenticate();
-    // console.log("Database connected successfully!");
+app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+app.use(express.static("public"));
+app.use(cookieParser());
 
-    await sequelize.sync(); // Sync models with the database
-    //console.log("Database synced!");
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false },
+  })
+);
+//sequelize.authenticate();
+//user touter
+app.use("/user", userRouter);
+//notification router
+app.use("/notification", notificationRouter);
+//game router
+app.use("/game", gameRouter);
+//room router
+app.use("/room", roomRouter);
+//tournament router
+app.use("/tournament", tournamentRouter);
+//refer router
+app.use("/refer", referSettingRouter);
+//app.use("/payment", paymentRouter);
+//transaction router
+app.use("/wallet", walletRouter);
+// Global error handling middleware
+app.use("/admin", adminRouter);
+app.use((err, req, res, next) => {
+  console.error("Server Error:", err);
+  res.status(500).json({ message: "Server error", error: err.message });
+});
 
-    // Start server only after DB is ready
-    server.listen(PORT, () => {
-      console.log(` Server running on port ${PORT}`);
-    });
-  } catch (err) {
-    console.error("Database connection error:", err);
-    process.exit(1); // Stop process if DB fails
-  }
-})();
-
-export { io };
+export { app };
