@@ -1,22 +1,28 @@
 import { Sequelize } from "sequelize";
 
-// Initialize Sequelize connection
-const sequelize = new Sequelize("ludogame", "postgres", "root", {
-  host: "localhost",
+
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: "postgres",
+  protocol: "postgres",
+  dialectOptions: {
+    ssl: {
+      require: true,             
+      rejectUnauthorized: false, 
+    },
+  },
 });
 
-//  Correct way to test the connection
+// Test DB connection
 const testDbConnection = async () => {
   try {
     await sequelize.authenticate();
-    console.log("Database connection successful!");
+    console.log("✅ Database connection successful!");
   } catch (error) {
-    console.error(" Database connection failed:", error.message);
+    console.error("❌ Database connection failed:", error.message);
   }
 };
 
-// Call the function immediately
+// Call immediately
 testDbConnection();
 
 export { sequelize };
