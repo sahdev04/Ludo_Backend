@@ -63,6 +63,11 @@ sequelize
   .then(() => console.log("✅ Database connected successfully"))
   .catch((err) => console.error("❌ Database connection failed:", err.message));
 
+// ✅ Root route (health check)
+app.get("/", (req, res) => {
+  res.send("✅ Ludo Backend is running successfully on Render!");
+});
+
 // ✅ Routes
 app.use("/user", userRouter);
 app.use("/game", gameRouter);
